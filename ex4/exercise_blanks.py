@@ -23,11 +23,6 @@ TRAIN = "train"
 VAL = "val"
 TEST = "test"
 
-# My constants
-EPOCH_COUNT = 20
-WEIGHT_DECAY = .0001
-LEARNING_RATE = .01
-
 # ------------------------------------------ Helper methods and classes --------------------------
 
 def get_available_device():
@@ -410,12 +405,19 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters())
     data_iterator = data_manager.get_torch_iterator()
+    loss = [[], []]
+    acc = [[], []]
     for epoch in range(n_epochs):
         train_loss, train_acc = train_epoch(model, data_iterator, optimizer, criterion)
+        loss[0].append(train_loss)
+        acc[0].append(train_acc)
         print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
         validation_loss, validation_acc = evaluate(model, data_iterator, criterion)
+        loss[1].append(validation_loss)
+        acc[1].append(validation_acc)
         print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
         save_model(model, './model', epoch, optimizer)
+    return loss, acc
 
 
 def train_log_linear_with_one_hot():
@@ -424,8 +426,7 @@ def train_log_linear_with_one_hot():
     """
     data_manager = DataManager(batch_size=64)
     model = LogLinear(data_manager.get_input_shape()[0])
-    train_model(model, data_manager, 20, .01, .0001)
-    return
+    return train_model(model, data_manager, 20, .01, .0001)
 
 
 def train_log_linear_with_w2v():
