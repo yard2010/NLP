@@ -340,9 +340,11 @@ def train_epoch(model, data_iterator, optimizer, criterion):
 
         optimizer.zero_grad()
 
-        predictions = model(embedding.float()).squeeze()
-        loss = criterion(predictions, tags.float())
-        acc = binary_accuracy(predictions, tags.float())
+        tags = tags.float().to(get_available_device())
+
+        predictions = model(embedding.float().to(get_available_device())).squeeze()
+        loss = criterion(predictions, tags)
+        acc = binary_accuracy(predictions, tags)
 
         loss.backward()
         optimizer.step()
@@ -370,9 +372,11 @@ def evaluate(model, data_iterator, criterion):
         # if index % 10 == 0:
         #     print("Batch", index, "/", len(data_iterator))
 
-        predictions = model(embedding.float()).squeeze()
-        loss = criterion(predictions, tags.float())
-        acc = binary_accuracy(predictions, tags.float())
+        tags = tags.float().to(get_available_device())
+
+        predictions = model(embedding.float().to(get_available_device())).squeeze()
+        loss = criterion(predictions, tags)
+        acc = binary_accuracy(predictions, tags)
 
         epoch_loss += loss.item()
         epoch_acc += acc.item()
@@ -416,7 +420,7 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
         loss[1].append(validation_loss)
         acc[1].append(validation_acc)
         print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
-        save_model(model, './model', epoch, optimizer)
+        # save_model(model, './model', epoch, optimizer)
     return loss, acc
 
 
@@ -424,8 +428,9 @@ def train_log_linear_with_one_hot():
     """
     Here comes your code for training and evaluation of the log linear model with one hot representation.
     """
-    data_manager = DataManager(batch_size=64)
+    data_manager = DataManager(batch_size=64, dataset_path="/content/NLP/ex4/stanfordSentimentTreebank")
     model = LogLinear(data_manager.get_input_shape()[0])
+    model = model.to(device=torch.device('cuda:0'))
     return train_model(model, data_manager, 20, .01, .0001)
 
 
