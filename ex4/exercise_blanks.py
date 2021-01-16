@@ -23,6 +23,10 @@ TRAIN = "train"
 VAL = "val"
 TEST = "test"
 
+# My constants
+EPOCH_COUNT = 20
+WEIGHT_DECAY = .0001
+LEARNING_RATE = .01
 
 # ------------------------------------------ Helper methods and classes --------------------------
 
@@ -138,11 +142,11 @@ def average_one_hots(sent, word_to_ind):
     :param word_to_ind: a mapping between words to indices
     :return:
     """
-    sum = np.zeros(word_to_ind.size)
-    for word in sent:
-        word_one_hot = get_one_hot(word_to_ind.size, word_to_ind[word])
+    sum = np.zeros(len(word_to_ind))
+    for word in sent.text:
+        word_one_hot = get_one_hot(len(word_to_ind), word_to_ind[word])
         sum += word_one_hot
-    return sum / sent.size
+    return sum / len(sent.text)
 
 
 def get_word_to_ind(words_list):
@@ -153,7 +157,7 @@ def get_word_to_ind(words_list):
     :return: the dictionary mapping words to the index
     """
     mapping = dict()
-    for word, index in enumerate(words_list):
+    for index, word in enumerate(words_list):
         mapping[word] = index
     return mapping
 
@@ -318,7 +322,7 @@ def binary_accuracy(preds, y):
     :param y: a vector of true labels
     :return: scalar value - (<number of accurate predictions> / <number of examples>)
     """
-    return (preds == y).sum() / y.shape[0]
+    return (torch.round(torch.sigmoid(preds)) == y).sum() / y.shape[0]
 
 
 def train_epoch(model, data_iterator, optimizer, criterion):
@@ -330,8 +334,28 @@ def train_epoch(model, data_iterator, optimizer, criterion):
     :param optimizer: the optimizer object for the training process.
     :param criterion: the criterion object for the training process.
     """
+    epoch_loss = 0
+    epoch_acc = 0
 
-    return
+    model.train()
+
+    for index, (embedding, tags) in enumerate(data_iterator):
+        # if index % 10 == 0:
+        #     print("Batch", index, "/", len(data_iterator))
+
+        optimizer.zero_grad()
+
+        predictions = model(embedding.float()).squeeze()
+        loss = criterion(predictions, tags.float())
+        acc = binary_accuracy(predictions, tags.float())
+
+        loss.backward()
+        optimizer.step()
+
+        epoch_loss += loss.item()
+        epoch_acc += acc.item()
+    
+    return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator)
 
 
 def evaluate(model, data_iterator, criterion):
@@ -342,7 +366,23 @@ def evaluate(model, data_iterator, criterion):
     :param criterion: the loss criterion used for evaluation
     :return: tuple of (average loss over all examples, average accuracy over all examples)
     """
-    return
+    epoch_loss = 0
+    epoch_acc = 0
+
+    model.eval()
+
+    for index, (embedding, tags) in enumerate(data_iterator):
+        # if index % 10 == 0:
+        #     print("Batch", index, "/", len(data_iterator))
+
+        predictions = model(embedding.float()).squeeze()
+        loss = criterion(predictions, tags.float())
+        acc = binary_accuracy(predictions, tags.float())
+
+        epoch_loss += loss.item()
+        epoch_acc += acc.item()
+    
+    return epoch_loss / len(data_iterator), epoch_acc / len(data_iterator)
 
 
 def get_predictions_for_data(model, data_iter):
@@ -367,16 +407,24 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     :param lr: learning rate to be used for optimization
     :param weight_decay: parameter for l2 regularization
     """
-    return
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.Adam(model.parameters())
+    data_iterator = data_manager.get_torch_iterator()
+    for epoch in range(n_epochs):
+        train_loss, train_acc = train_epoch(model, data_iterator, optimizer, criterion)
+        print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
+        validation_loss, validation_acc = evaluate(model, data_iterator, criterion)
+        print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
+        save_model(model, './model', epoch, optimizer)
 
 
 def train_log_linear_with_one_hot():
     """
     Here comes your code for training and evaluation of the log linear model with one hot representation.
     """
-    data_manager = DataManager()
-    model = LogLinear(data_manager.get_input_shape)
-    train_model()
+    data_manager = DataManager(batch_size=64)
+    model = LogLinear(data_manager.get_input_shape()[0])
+    train_model(model, data_manager, 20, .01, .0001)
     return
 
 
