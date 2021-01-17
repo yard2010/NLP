@@ -411,7 +411,6 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     data_iterator = data_manager.get_torch_iterator()
     loss = [[], []]
     acc = [[], []]
-    print(n_epochs)
     for epoch in range(n_epochs):
         train_iterator = data_manager.get_torch_iterator()
         train_loss, train_acc = train_epoch(model, train_iterator, optimizer, criterion)
@@ -437,7 +436,7 @@ def train_log_linear_with_one_hot():
     data_manager = DataManager(batch_size=64, dataset_path="/content/NLP/ex4/stanfordSentimentTreebank")
     model = LogLinear(data_manager.get_input_shape()[0])
     model = model.to(device=torch.device('cuda:0'))
-    return train_model(model, data_manager, 4, .01, .0001)
+    return train_model(model, data_manager, 20, .01, .0001)
 
 
 def train_log_linear_with_w2v():
