@@ -392,7 +392,7 @@ def get_predictions_for_data(model, data_iter):
     for embedding, tags in data_iter:
       predictions = model(embedding.float().to(get_available_device()))
       results = torch.cat([results.to(get_available_device()), predictions])
-    return results
+    return results.squeeze()
 
 
 
@@ -438,20 +438,19 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     negated_iterator = DataLoader(negated_dataset)
     negated_tags = torch.Tensor([tags[i] for i in negated_indices]).float().to(get_available_device())
     negated_predictions = get_predictions_for_data(model, negated_iterator)
-    negated_acc = binary_accuracy(predictions, tags)
+    negated_acc = binary_accuracy(negated_predictions, negated_tags)
 
     rare_words_indices = data_loader.get_rare_words_examples(data_manager.sentences[TEST], data_manager.sentiment_dataset)
     rare_words_dataset = [data_manager.torch_datasets[TEST][i] for i in rare_words_indices]
     rare_words_iterator = DataLoader(rare_words_dataset)
-    rare_words_tags = torch.Tensor([tags[i] for i in rare_words_indices]).float().to(get_available_device)
+    rare_words_tags = torch.Tensor([tags[i] for i in rare_words_indices]).float().to(get_available_device())
     rare_words_predictions = get_predictions_for_data(model, rare_words_iterator)
-    rare_words_acc = binary_accuracy(predictions, tags)
-
+    rare_words_acc = binary_accuracy(rare_words_predictions, rare_words_tags)
     return loss, acc, {
-      test_loss: test_loss.item(),
-      test_acc: test_acc.item(),
-      negated_acc: negated_acc.item(),
-      rare_words_acc: rare_words_acc.item() 
+      "test_loss": test_loss.item(),
+      "test_acc": test_acc.item(),
+      "negated_acc": negated_acc.item(),
+      "rare_words_acc": rare_words_acc.item() 
     }
 
 
