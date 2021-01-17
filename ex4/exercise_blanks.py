@@ -334,10 +334,7 @@ def train_epoch(model, data_iterator, optimizer, criterion):
 
     model.train()
 
-    for index, (embedding, tags) in enumerate(data_iterator):
-        # if index % 10 == 0:
-        #     print("Batch", index, "/", len(data_iterator))
-
+    for embedding, tags in data_iterator:
         optimizer.zero_grad()
 
         tags = tags.float().to(get_available_device())
@@ -368,10 +365,7 @@ def evaluate(model, data_iterator, criterion):
 
     model.eval()
 
-    for index, (embedding, tags) in enumerate(data_iterator):
-        # if index % 10 == 0:
-        #     print("Batch", index, "/", len(data_iterator))
-
+    for embedding, tags in data_iterator:
         tags = tags.float().to(get_available_device())
 
         predictions = model(embedding.float().to(get_available_device())).squeeze()
@@ -393,7 +387,13 @@ def get_predictions_for_data(model, data_iter):
     :param data_iter: torch iterator as given by the DataManager
     :return:
     """
-    return
+    results = torch.tensor()
+    model.eval()
+    for embedding, tags in data_iter:
+      predictions = model(embedding.float().to(get_available_device())).squeeze()
+      result = torch.cat(results, predictions)
+    return results
+
 
 
 def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
@@ -408,7 +408,6 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     """
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters())
-    data_iterator = data_manager.get_torch_iterator()
     loss = [[], []]
     acc = [[], []]
     for epoch in range(n_epochs):
@@ -425,8 +424,12 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
         print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
         save_model(model, './model', epoch, optimizer)
 
-    
-    return loss, acc
+    test_iterator = data_manager.get_torch_iterator(data_subset=TEST)
+    predictions = get_predictions_for_data(model, test_iterator)
+    tags = data_manager.get_labels(data_subset=TEST)
+    test_acc = binary_accuracy(predictions, tags)
+    test_loss = criterion(predictions, tags)
+    return loss, acc, test_loss, test_acc
 
 
 def train_log_linear_with_one_hot():
