@@ -87,7 +87,7 @@ def load_word2vec():
     return wv_from_bin
 
 
-def create_or_load_slim_w2v(words_list, cache_w2v=False):
+def create_or_load_slim_w2v(words_list, cache_w2v=True):
     """
     returns word2vec dict only for words which appear in the dataset.
     :param words_list: list of words to use for the w2v dict
@@ -114,7 +114,13 @@ def get_w2v_average(sent, word_to_vec, embedding_dim):
     :param embedding_dim: the dimension of the word embedding vectors
     :return The average embedding vector as numpy ndarray.
     """
-    return
+    sum = np.zeros(embedding_dim)
+    count = 0
+    for word in sent.text:
+        if word in word_to_vec:
+          sum += word_to_vec[word]
+          count += 1
+    return sum / count
 
 
 def get_one_hot(size, ind):
@@ -234,7 +240,7 @@ class DataManager():
             self.sent_func = sentence_to_embedding
 
             self.sent_func_kwargs = {"seq_len": SEQ_LEN,
-                                     "word_to_vec": create_or_load_slim_w2v(words_list),
+                                     "word_to_vec": create_or_load_slim_w2v(words_list, True),
                                      "embedding_dim": embedding_dim
                                      }
         elif data_type == W2V_AVERAGE:
@@ -469,7 +475,11 @@ def train_log_linear_with_w2v():
     Here comes your code for training and evaluation of the log linear model with word embeddings
     representation.
     """
-    return
+    data_manager = DataManager(batch_size=64, dataset_path="/content/NLP/ex4/stanfordSentimentTreebank",
+      data_type=W2V_AVERAGE, embedding_dim=300)
+    model = LogLinear(data_manager.get_input_shape()[0])
+    model = model.to(device=torch.device('cuda:0'))
+    return train_model(model, data_manager, 20, .01, .0001)
 
 
 def train_lstm_with_w2v():
@@ -479,7 +489,7 @@ def train_lstm_with_w2v():
     return
 
 
-if __name__ == '__main__':
-    train_log_linear_with_one_hot()
+# if __name__ == '__main__':
+    # train_log_linear_with_one_hot()
     # train_log_linear_with_w2v()
     # train_lstm_with_w2v()
