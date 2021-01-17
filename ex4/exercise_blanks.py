@@ -303,7 +303,7 @@ class LogLinear(nn.Module):
         return self.fc1(x)
 
     def predict(self, x):
-        return nn.Sigmoid()(x)
+        return
 
 
 # ------------------------- training functions -------------
@@ -387,11 +387,11 @@ def get_predictions_for_data(model, data_iter):
     :param data_iter: torch iterator as given by the DataManager
     :return:
     """
-    results = torch.tensor()
+    results = torch.empty(0)
     model.eval()
     for embedding, tags in data_iter:
       predictions = model(embedding.float().to(get_available_device())).squeeze()
-      result = torch.cat(results, predictions)
+      results = torch.cat([results.to(get_available_device()), predictions], dim=-1)
     return results
 
 
@@ -408,28 +408,51 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     """
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters())
+
+    model, optimizer, epoch = load(model, 'model', optimizer)
+
     loss = [[], []]
     acc = [[], []]
-    for epoch in range(n_epochs):
-        train_iterator = data_manager.get_torch_iterator()
-        train_loss, train_acc = train_epoch(model, train_iterator, optimizer, criterion)
-        loss[0].append(train_loss)
-        acc[0].append(train_acc)
-        print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
+    # for epoch in range(n_epochs):
+    #     train_iterator = data_manager.get_torch_iterator()
+    #     train_loss, train_acc = train_epoch(model, train_iterator, optimizer, criterion)
+    #     loss[0].append(train_loss)
+    #     acc[0].append(train_acc)
+    #     print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
 
-        validation_iterator = data_manager.get_torch_iterator(data_subset=VAL)
-        validation_loss, validation_acc = evaluate(model, validation_iterator, criterion)
-        loss[1].append(validation_loss)
-        acc[1].append(validation_acc)
-        print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
-        save_model(model, './model', epoch, optimizer)
+    #     validation_iterator = data_manager.get_torch_iterator(data_subset=VAL)
+    #     validation_loss, validation_acc = evaluate(model, validation_iterator, criterion)
+    #     loss[1].append(validation_loss)
+    #     acc[1].append(validation_acc)
+    #     print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
+    #     save_model(model, './model', epoch, optimizer)
 
     test_iterator = data_manager.get_torch_iterator(data_subset=TEST)
+    tags = torch.from_numpy(data_manager.get_labels(data_subset=TEST)).to(get_available_device())
     predictions = get_predictions_for_data(model, test_iterator)
-    tags = data_manager.get_labels(data_subset=TEST)
     test_acc = binary_accuracy(predictions, tags)
     test_loss = criterion(predictions, tags)
-    return loss, acc, test_loss, test_acc
+
+    negated_indices = data_loader.get_negated_polarity_examples(data_manager.sentences[TEST])
+    negated_dataset = [data_manager.torch_datasets[TEST][i] for i in negated_indices]
+    negated_iterator = DataLoader(negated_dataset)
+    negated_tags = torch.Tensor([tags[i] for i in negated_indices]).float().to(get_available_device())
+    negated_predictions = get_predictions_for_data(model, negated_iterator)
+    negated_acc = binary_accuracy(predictions, tags)
+
+    rare_words_indices = data_loader.get_rare_words_examples(data_manager.sentences[TEST], data_manager.sentiment_dataset)
+    rare_words_dataset = [data_manager.torch_datasets[TEST][i] for i in rare_words_indices]
+    rare_words_iterator = DataLoader(rare_words_dataset)
+    rare_words_tags = torch.Tensor([tags[i] for i in rare_words_indices]).float().to(get_available_device)
+    rare_words_predictions = get_predictions_for_data(model, rare_words_iterator)
+    rare_words_acc = binary_accuracy(predictions, tags)
+
+    return loss, acc, {
+      test_loss: test_loss.item(),
+      test_acc: test_acc.item(),
+      negated_acc: negated_acc.item(),
+      rare_words_acc: rare_words_acc.item() 
+    }
 
 
 def train_log_linear_with_one_hot():
