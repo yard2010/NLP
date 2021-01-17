@@ -390,8 +390,8 @@ def get_predictions_for_data(model, data_iter):
     results = torch.empty(0)
     model.eval()
     for embedding, tags in data_iter:
-      predictions = model(embedding.float().to(get_available_device())).squeeze()
-      results = torch.cat([results.to(get_available_device()), predictions], dim=-1)
+      predictions = model(embedding.float().to(get_available_device()))
+      results = torch.cat([results.to(get_available_device()), predictions])
     return results
 
 
