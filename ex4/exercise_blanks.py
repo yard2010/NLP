@@ -115,7 +115,7 @@ def get_w2v_average(sent, word_to_vec, embedding_dim):
     :return The average embedding vector as numpy ndarray.
     """
     sum = np.zeros(embedding_dim)
-    count = 0
+    count = 1
     for word in sent.text:
         if word in word_to_vec:
           sum += word_to_vec[word]
@@ -415,23 +415,23 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters())
 
-    model, optimizer, epoch = load(model, 'model', optimizer)
+    # model, optimizer, epoch = load(model, 'model', optimizer)
 
     loss = [[], []]
     acc = [[], []]
-    # for epoch in range(n_epochs):
-    #     train_iterator = data_manager.get_torch_iterator()
-    #     train_loss, train_acc = train_epoch(model, train_iterator, optimizer, criterion)
-    #     loss[0].append(train_loss)
-    #     acc[0].append(train_acc)
-    #     print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
+    for epoch in range(n_epochs):
+        train_iterator = data_manager.get_torch_iterator()
+        train_loss, train_acc = train_epoch(model, train_iterator, optimizer, criterion)
+        loss[0].append(train_loss)
+        acc[0].append(train_acc)
+        print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
 
-    #     validation_iterator = data_manager.get_torch_iterator(data_subset=VAL)
-    #     validation_loss, validation_acc = evaluate(model, validation_iterator, criterion)
-    #     loss[1].append(validation_loss)
-    #     acc[1].append(validation_acc)
-    #     print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
-    #     save_model(model, './model', epoch, optimizer)
+        validation_iterator = data_manager.get_torch_iterator(data_subset=VAL)
+        validation_loss, validation_acc = evaluate(model, validation_iterator, criterion)
+        loss[1].append(validation_loss)
+        acc[1].append(validation_acc)
+        print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
+        # save_model(model, './model', epoch, optimizer)
 
     test_iterator = data_manager.get_torch_iterator(data_subset=TEST)
     tags = torch.from_numpy(data_manager.get_labels(data_subset=TEST)).to(get_available_device())
