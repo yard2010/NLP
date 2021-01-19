@@ -288,7 +288,9 @@ class LSTM(nn.Module):
     An LSTM for sentiment analysis with architecture as described in the exercise description.
     """
     def __init__(self, embedding_dim, hidden_dim, n_layers, dropout):
-        return
+        super().__init__()
+        self.fc1 = nn.Linear(embedding_dim, 1)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, 1, bidirectional=True)
 
     def forward(self, text):
         return
@@ -424,13 +426,13 @@ def train_model(model, data_manager, n_epochs, lr, weight_decay=0.):
         train_loss, train_acc = train_epoch(model, train_iterator, optimizer, criterion)
         loss[0].append(train_loss)
         acc[0].append(train_acc)
-        print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
+        # print("Epoch", epoch, "[train]:\tloss:", train_loss, "acc:", train_acc)
 
         validation_iterator = data_manager.get_torch_iterator(data_subset=VAL)
         validation_loss, validation_acc = evaluate(model, validation_iterator, criterion)
         loss[1].append(validation_loss)
         acc[1].append(validation_acc)
-        print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
+        # print("Epoch", epoch, "[validation]:\tloss:", validation_loss, "acc:", validation_acc)
         # save_model(model, './model', epoch, optimizer)
 
     test_iterator = data_manager.get_torch_iterator(data_subset=TEST)
